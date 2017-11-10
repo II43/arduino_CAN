@@ -1,0 +1,3 @@
+[submodule "externals/CAN-Bus_Shield"]
+	path = externals/CAN-Bus_Shield
+	url = https://github.com/sparkfun/CAN-Bus_Shield.git
