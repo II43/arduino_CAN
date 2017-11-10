@@ -1,0 +1,78 @@
+%% ========================================================================
+%% File:    arduino_CAN_setup.tlc
+%% Created: Tue Jan 31 08:55:57 2012
+%% Author:  LL2
+%% Version: 0.1
+%% ========================================================================
+
+%implements  arduino_CAN_setup "C"
+
+%% Function: BlockTypeSetup ===============================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockTypeSetup(block, system) Output
+  
+  %% Common Includes (H)
+  %<LibAddToCommonIncludes("mcp2515.h")> 
+  
+  %% Additional Sources
+  %<LibAddToModelSources("mcp2515")>
+   
+  %% Initialization
+  %openfile initbuffer
+  mcp2515_init(%<FEVAL("uint8",block.Parameter.Value)>);
+  %closefile initbuffer
+  %<LibMdlStartCustomCode(initbuffer,"trailer")>
+
+%endfunction
+
+%% Function: BlockInstanceSetup ===========================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%%%function BlockInstanceSetup(block, system) Output
+  %% Do nothing at the moment 
+%%%endfunction
+
+%% Function: Outputs ======================================================
+%%
+%% Purpose:
+%%      Code generation rules for OUTPUTS function.
+%%
+%%%function Outputs(block, system) Output
+%%  %% Do nothing at the moment  
+%%  %%
+%%%endfunction
+
+
+%% Function: Start ========================================================
+%%
+%% Purpose:
+%%      Code generation rules for INITIALIZATION function.
+%%
+%%%function Start(block, system) Output
+%%    /* This CAN intialization function */
+%%%endfunction
+
+%% Function: Terminate ====================================================
+%%
+%% Purpose:
+%%      Code generation rules for TERMINATE function.
+%%
+%%%function Terminate(block, system) Output
+%%    /* This a CAN termination script */
+%%    /* Do nothing for the moment */
+%%%endfunction
+
+
+%% [EOF] arduino_CAN_setup.tlc
+
+
+
+
+

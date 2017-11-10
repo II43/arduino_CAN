@@ -1,0 +1,246 @@
+%% ========================================================================
+%% File:    arduino_CAN_rx_msg.tlc
+%% Created: Mon Jan 30 11:31:55 2012
+%% Author:  LL2
+%% Version: 0.1
+%% ========================================================================
+
+%implements  arduino_CAN_rx_msg "C"
+
+%% Function: BlockTypeSetup ===============================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockTypeSetup(block, system) Output
+  
+  %% Common Includes (H)
+  %%<LibAddToCommonIncludes("RxCANmsg.h")> 
+
+  %% Defines (PRIVATE H)
+  %openfile buffer 
+  #define LED3              8
+  %closefile buffer
+  %%<LibCacheDefine(buffer)>
+  
+  %% Externs (PRIVATE H)
+  %openfile externs 
+
+  extern void mcp2515_bit_modify(uint8_t adress, uint8_t mask, uint8_t data);
+  extern uint8_t mcp2515_init(uint8_t speed);
+  extern uint8_t mcp2515_send_message(tCAN *message);
+
+  %closefile externs
+  %%<LibCacheExtern(externs)>
+  %%
+
+  %% Global parameters
+  %openfile declarebuffer
+  tCAN *RMsg_%<block.Identifier>;
+  %closefile declarebuffer
+  %%<LibCacheGlobalPrmData(declarebuffer)>
+  
+  %% Includes (PRIVATE H)
+  %openfile includesBuffer 
+  /* Custom library for CAN */
+  %closefile includesBuffer
+  %%<LibCacheIncludes(includesBuffer)>
+
+  %% Initialization
+  %openfile initbuffer
+  pinMode(LED3, OUTPUT);
+  %closefile initbuffer
+  %%<LibMdlStartCustomCode(initbuffer,"trailer")>
+%endfunction
+
+%% Function: BlockInstanceSetup ===========================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockInstanceSetup(block, system) Output
+  %assign pu1_width = LibBlockOutputSignalWidth(1)
+  %% Global parameters - definition
+  %openfile declarebuffer
+  uint8_t isReceived_%<block.Identifier>;
+  tCAN RMsg_%<block.Identifier>;
+  %closefile declarebuffer
+  %<LibCacheGlobalPrmData(declarebuffer)>
+
+  %% Initialization
+  %openfile initbuffer
+
+  RMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter.Value)>;
+  RMsg_%<block.Identifier>.header.rtr = 0;
+  RMsg_%<block.Identifier>.header.length = 8;
+  %foreach idx = pu1_width
+    RMsg_%<block.Identifier>.data[%<idx>] = 0U;
+  %endforeach
+  isReceived_%<block.Identifier> = 0;
+  %closefile initbuffer
+  %<LibMdlStartCustomCode(initbuffer,"trailer")>  
+  
+  %if !EXISTS(glRxMSG_BlockInstanceSetup) 
+    %% Get the number of this type and count
+    %foreach idxType = NumSFunctionNameCounts
+        %if SFunctionNameCount[idxType].Name == block.ParamSettings.FunctionName
+            %assign ::nRX_BlockInstanceSetup = SFunctionNameCount[idxType].Count
+            %break
+        %endif
+    %endforeach
+    %% Don't do this again during this build 
+    %assign ::glRxMSG_BlockInstanceSetup = 1
+  %else
+     %assign ::glRxMSG_BlockInstanceSetup = glRxMSG_BlockInstanceSetup+1
+  %endif
+
+  %% Header (RX)
+  %% First 
+  %if glRxMSG_BlockInstanceSetup == 1
+  %openfile rxmsg_h_ = "RxCANmsg.h","w"
+/* Retreive the relevant messages from CAN buffer (if any) */ 
+/* Function implementation */
+#ifndef RXCANMSG_H_
+#define RXCANMSG_H_
+
+void retreive_RxCAN();
+
+  %closefile rxmsg_h_
+  %endif  
+  %% All
+  %openfile rxmsg_h_ = "RxCANmsg.h","a" 
+extern tCAN RMsg_%<block.Identifier>;
+extern uint8_t isReceived_%<block.Identifier>;
+  %closefile rxmsg_h_
+  %% Last
+  %if glRxMSG_BlockInstanceSetup == nRX_BlockInstanceSetup
+  %openfile rxmsg_h_ = "RxCANmsg.h","a" 
+      
+#endif
+  %closefile rxmsg_h_ 
+  %endif     
+
+  %% Source code (RX)
+  %% First 
+  %if glRxMSG_BlockInstanceSetup == 1
+  %openfile rxmsg_c_ = "RxCANmsg.c","w"
+/* Retreive the relevant messages from CAN buffer (if any) */ 
+/* Function implementation */
+
+#include "mcp2515.h"
+#include "RxCANmsg.h"
+
+#define LED3 8U
+
+void retreive_RxCAN()
+{         
+  /* Retreive CAN messages */
+  if (mcp2515_check_message())
+  {
+    uint8_t isNotFinished = 0;
+    tCAN tempCANmsg;
+	/* Loop through CAN messages and assign it to the right place*/
+    isNotFinished = mcp2515_get_message(&tempCANmsg);
+	while(isNotFinished)
+	{
+  %closefile rxmsg_c_   
+  %endif
+  %% All
+  %openfile rxmsg_c_ = "RxCANmsg.c","a"
+      if (tempCANmsg.id == RMsg_%<block.Identifier>.id)
+      {
+  %foreach idx = pu1_width
+    %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>) 
+        RMsg_%<block.Identifier>.data[%<idx>] = tempCANmsg.data[%<idx>];
+  %endforeach
+        isReceived_%<block.Identifier> = 1;
+        digitalWrite(LED3,1U); 
+      }
+    
+  %closefile rxmsg_c_ 
+  %% Last
+  %if glRxMSG_BlockInstanceSetup == nRX_BlockInstanceSetup
+  %openfile rxmsg_c_ = "RxCANmsg.c","a" 
+	  /* Keep going */
+      isNotFinished = mcp2515_get_message(&tempCANmsg);        
+	}	
+  }
+  else
+  {
+    %%digitalWrite(LED3,0U);
+  }  
+}
+  %closefile rxmsg_c_  
+  %endif     
+
+   
+%endfunction
+%% Function: Outputs ======================================================
+%%
+%% Purpose:
+%%      Code generation rules for OUTPUTS function.
+%%
+%function Outputs(block, system) Output
+  %% Inputs
+  %assign pu0sig  = LibBlockOutputSignal(0, "", "", 0)
+  %assign pu0_width = LibBlockOutputSignalWidth(0)
+  %assign pu1_width = LibBlockOutputSignalWidth(1)
+  
+  %if !EXISTS(glRxMSG_Outputs) 
+    %% Get the number of this type and count
+    %foreach idxType = NumSFunctionNameCounts
+        %if SFunctionNameCount[idxType].Name == block.ParamSettings.FunctionName
+            %assign ::nRX_Outputs = SFunctionNameCount[idxType].Count
+            %break
+        %endif
+    %endforeach
+    %% Don't do this again during this build 
+    %assign ::glRxMSG_Outputs = 1
+  %else
+     %assign ::glRxMSG_Outputs = glRxMSG_Outputs+1
+  %endif  
+
+  %if glRxMSG_Outputs == 1
+  /* Retreive the relevant messages from CAN buffer (if any) */  
+  retreive_RxCAN();
+  %endif  
+  %% Get message  
+  /* Get the CAN message */
+  %foreach idx = pu1_width
+    %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>)
+     %<pu1sig> = RMsg_%<block.Identifier>.data[%<idx>];
+  %endforeach
+  %<pu0sig> =  isReceived_%<block.Identifier>;
+  isReceived_%<block.Identifier> = 0;
+
+  %%
+%endfunction
+
+
+%% Function: Start ========================================================
+%%
+%% Purpose:
+%%      Code generation rules for INITIALIZATION function.
+%%
+%%%function Start(block, system) Output
+%%    /* This CAN intialization function */
+%%%endfunction
+
+%% Function: Terminate ====================================================
+%%
+%% Purpose:
+%%      Code generation rules for TERMINATE function.
+%%
+%%%function Terminate(block, system) Output
+%%    /* This a CAN termination script */
+%%    /* Do nothing for the moment */
+%%%endfunction
+
+%% [EOF] arduino_CAN_rx_msg.tlc
+
+
+
+
+

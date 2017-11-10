@@ -1,0 +1,129 @@
+%% ========================================================================
+%% File:    arduino_CAN_tx_msg.tlc
+%% Created: Fri Jan 27 15:15:46 2012
+%% Author:  LL2
+%% Version: 0.1
+%% ========================================================================
+
+%implements  arduino_CAN_tx_msg "C"
+
+%% Function: BlockTypeSetup ===============================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockTypeSetup(block, system) Output
+  
+  %% Common Includes (H)
+  %%<LibAddToCommonIncludes("mcp2515.h")> 
+
+  %% Defines (PRIVATE H)
+  %openfile buffer 
+  #define CANSPEED_125      7		// CAN speed at 125 kbps
+  #define CANSPEED_250      3		// CAN speed at 250 kbps
+  #define CANSPEED_500      1		// CAN speed at 500 kbps
+  #define CANSPEED_1000     0       // CAN speed at 1000 kbps
+  %closefile buffer
+  %%<LibCacheDefine(buffer)>
+  
+  %% Externs (PRIVATE H)
+  %openfile externs 
+
+  extern void mcp2515_bit_modify(uint8_t adress, uint8_t mask, uint8_t data);
+  extern uint8_t mcp2515_init(uint8_t speed);
+  extern uint8_t mcp2515_send_message(tCAN *message);
+
+  %closefile externs
+  %%<LibCacheExtern(externs)>
+  %%
+
+  %% Global parameters
+  %openfile declarebuffer
+  tCAN *TMsg_%<block.Identifier>;
+  %closefile declarebuffer
+  %%<LibCacheGlobalPrmData(declarebuffer)>
+  
+  %% Includes (PRIVATE H)
+  %openfile includesBuffer 
+  /* Custom library for CAN */
+  %closefile includesBuffer
+  %%<LibCacheIncludes(includesBuffer)>
+
+  %% Initialization
+  %openfile initbuffer
+  mcp2515_init(CANSPEED_500);
+  %closefile initbuffer
+  %%<LibMdlStartCustomCode(initbuffer,"trailer")>
+%endfunction
+
+%% Function: BlockInstanceSetup ===========================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockInstanceSetup(block, system) Output
+  %% Global parameters
+  %openfile declarebuffer
+  tCAN TMsg_%<block.Identifier>;
+  %closefile declarebuffer
+  %<LibCacheGlobalPrmData(declarebuffer)>
+%endfunction
+%% Function: Outputs ======================================================
+%%
+%% Purpose:
+%%      Code generation rules for OUTPUTS function.
+%%
+%function Outputs(block, system) Output
+  %% Inputs
+  %assign pu0sig  = LibBlockInputSignal(0, "", "", 0)
+  %assign pu0_width = LibBlockInputSignalWidth(0)
+  %assign pu1_width = LibBlockInputSignalWidth(1)
+  
+  if (%<pu0sig> > 0)
+  {
+      %% Prepare message
+      /* Prepare the CAN message */
+      TMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter.Value)>;
+      TMsg_%<block.Identifier>.header.rtr = 0;
+      TMsg_%<block.Identifier>.header.length = 8;
+      %foreach idx = pu1_width
+        %assign pu1sig  = LibBlockInputSignal(1, "", "", %<idx>)
+        TMsg_%<block.Identifier>.data[%<idx>] = %<pu1sig>;
+      %endforeach
+
+      %% Send message
+      /* Send the CAN message */
+      %% mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);
+      mcp2515_send_message(&TMsg_%<block.Identifier>);
+  } 
+  %%
+%endfunction
+
+
+%% Function: Start ========================================================
+%%
+%% Purpose:
+%%      Code generation rules for INITIALIZATION function.
+%%
+%%%function Start(block, system) Output
+%%    /* This CAN intialization function */
+%%%endfunction
+
+%% Function: Terminate ====================================================
+%%
+%% Purpose:
+%%      Code generation rules for TERMINATE function.
+%%
+%%%function Terminate(block, system) Output
+%%    /* This a CAN termination script */
+%%    /* Do nothing for the moment */
+%%%endfunction
+
+%% [EOF] arduino_CAN_tx_msg.tlc
+
+
+
+
+

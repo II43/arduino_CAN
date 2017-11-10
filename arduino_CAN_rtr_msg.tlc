@@ -1,0 +1,56 @@
+%% ========================================================================
+%% File : arduino_CAN_rtr_msg.tlc
+%% Created: Tue Jan 31 15:30:14 2012
+%% Author:  LL2
+%% Version: 0.1
+%% ========================================================================
+
+%implements  arduino_CAN_rtr_msg "C"
+
+%% Function: BlockInstanceSetup ===========================================
+%%
+%% Purpose:
+%%      Set up external references for wrapper functions in the 
+%%      generated code.
+%%
+%function BlockInstanceSetup(block, system) Output
+  %% Global parameters
+  %openfile declarebuffer
+  tCAN RTRMsg_%<block.Identifier>;
+  %closefile declarebuffer
+  %<LibCacheGlobalPrmData(declarebuffer)>
+  
+  %openfile initbuffer  
+  RTRMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter.Value)>;
+  RTRMsg_%<block.Identifier>.header.rtr = 1;
+  RTRMsg_%<block.Identifier>.header.length = 0;
+  %closefile initbuffer   
+  %<LibMdlStartCustomCode(initbuffer,"trailer")>  
+
+%endfunction
+%% Function: Outputs ======================================================
+%%
+%% Purpose:
+%%      Code generation rules for OUTPUTS function.
+%%
+%function Outputs(block, system) Output
+  %% Inputs
+  %assign pu0sig  = LibBlockInputSignal(0, "", "", 0)
+  %assign pu0_width = LibBlockInputSignalWidth(0)
+  
+  if (%<pu0sig> > 0)
+  {
+      %% Send message
+      /* Send the Remote Request */
+      %% mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);
+      mcp2515_send_message(&RTRMsg_%<block.Identifier>);
+  } 
+  %%
+%endfunction
+
+%% [EOF] arduino_CAN_rtr_msg.tlc
+
+
+
+
+
