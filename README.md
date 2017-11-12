@@ -1,5 +1,7 @@
 # arduino_CAN
-MATLAB-Simulink code generation library for Arduino SparkFun CAN-BUS Shield
+MATLAB-Simulink code generation library for Arduino SparkFun CAN-BUS Shield. However it shall work with any hardware based on MCP2515 chip.
+
+![arduino_CAN_library](arduino_CAN_library.png)
 
 The library had been saved in MATLAB R2014b but toolchain validation was performed only in R2017.
 
