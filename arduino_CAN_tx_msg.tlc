@@ -16,8 +16,9 @@
 %function BlockTypeSetup(block, system) Output
   
   %% Common Includes (H)
-  %%<LibAddToCommonIncludes("mcp2515.h")> 
-
+  %%<LibAddToCommonIncludes("mcp2515.h")>
+  %<LibAddToCommonIncludes("can_message_2_tCAN.h")>
+  
   %% Defines (PRIVATE H)
   %openfile buffer 
   #define CANSPEED_125      7		// CAN speed at 125 kbps
@@ -81,6 +82,10 @@
   %assign pu0_width = LibBlockInputSignalWidth(0)
   %assign pu1_width = LibBlockInputSignalWidth(1)
   
+  %% Get data type of the data input signal
+  %assign pu1_dtname = LibBlockInputSignalDataTypeName(1,"")
+  
+  %if pu1_dtname == "uint8_T"
   if (%<pu0sig> > 0)
   {
       %% Prepare message
@@ -98,6 +103,19 @@
       %% mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);
       mcp2515_send_message(&TMsg_%<block.Identifier>);
   } 
+  %elseif pu1_dtname == "CAN_DATATYPE"
+  if (%<pu0sig> > 0)
+  {
+	  %assign pu1sig  = LibBlockInputSignal(1, "", "", 0)
+	  /* Prepare the CAN message */
+	  can_message_2_tCAN(%<pu1sig>, &TMsg_%<block.Identifier>);
+	  %% Send message
+      /* Send the CAN message */
+      mcp2515_send_message(&TMsg_%<block.Identifier>);
+  }
+  %else
+  %error "Input 2 for data has unsupported datatype. Only UINT8 or CAN_MESSAGE structure are supported."
+  %endif
   %%
 %endfunction
 

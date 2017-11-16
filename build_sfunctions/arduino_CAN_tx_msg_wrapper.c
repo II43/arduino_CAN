@@ -31,7 +31,8 @@
  */
 void arduino_CAN_tx_msg_Outputs_wrapper(const uint8_T *istransmitted,
 			const uint8_T *data,
-			const uint16_T *CAN_Id, const int_T p_width0)
+			const uint16_T *CAN_Id, const int_T p_width0,
+			const uint8_T *InputDataType, const int_T p_width1)
 {
 /* %%%-SFUNWIZ_wrapper_Outputs_Changes_BEGIN --- EDIT HERE TO _END */
 /* This sample sets the output equal to the input
