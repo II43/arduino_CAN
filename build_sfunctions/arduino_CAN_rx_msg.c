@@ -26,7 +26,7 @@
  * | See matlabroot/simulink/src/sfuntmpl_doc.c for a more detailed template |
  *  ------------------------------------------------------------------------- 
  *
- * Created: Fri Nov 10 10:09:25 2017
+ * Created: Fri Dec 08 11:48:59 2017
  */
 
 #define S_FUNCTION_LEVEL 2
@@ -54,7 +54,8 @@
 #define OUT_0_SLOPE           0.125
 /* Output Port  1 */
 #define OUT_PORT_1_NAME       data
-#define OUTPUT_1_WIDTH        8
+#define OUTPUT_1_WIDTH_UINT8  8
+#define OUTPUT_1_WIDTH_CANM   1
 #define OUTPUT_DIMS_1_COL     1
 #define OUTPUT_1_DTYPE        uint8_T
 #define OUTPUT_1_COMPLEX      COMPLEX_NO
@@ -69,11 +70,15 @@
 #define OUT_1_BIAS            0
 #define OUT_1_SLOPE           0.125
 
-#define NPARAMS               1
+#define NPARAMS               2
 /* Parameter 0 */
 #define PARAMETER_0_NAME      CAN_Id
 #define PARAMETER_0_DTYPE     uint16_T
 #define PARAMETER_0_COMPLEX   COMPLEX_NO
+/* Parameter 1 */
+#define PARAMETER_1_NAME      InputDataType
+#define PARAMETER_1_DTYPE     uint8_T
+#define PARAMETER_1_COMPLEX   COMPLEX_NO
 
 #define SAMPLE_TIME_0         INHERITED_SAMPLE_TIME
 #define NUM_DISC_STATES       0
@@ -93,13 +98,18 @@
 /*<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 #include "simstruc.h"
 #define PARAM_DEF0(S) ssGetSFcnParam(S, 0)
+#define PARAM_DEF1(S) ssGetSFcnParam(S, 1)
 
 #define IS_PARAM_UINT16(pVal) (mxIsNumeric(pVal) && !mxIsLogical(pVal) &&\
 !mxIsEmpty(pVal) && !mxIsSparse(pVal) && !mxIsComplex(pVal) && mxIsUint16(pVal))
 
+#define IS_PARAM_UINT8(pVal) (mxIsNumeric(pVal) && !mxIsLogical(pVal) &&\
+!mxIsEmpty(pVal) && !mxIsSparse(pVal) && !mxIsComplex(pVal) && mxIsUint8(pVal))
+
 extern void arduino_CAN_rx_msg_Outputs_wrapper(uint8_T *isreceived,
 			uint8_T *data,
-			const uint16_T *CAN_Id, const int_T p_width0);
+			const uint16_T *CAN_Id, const int_T p_width0,
+			const uint8_T *InputDataType, const int_T p_width1);
 /*====================*
  * S-function methods *
  *====================*/
@@ -124,6 +134,15 @@ static void mdlCheckParameters(SimStruct *S)
         }
     }
 
+    {
+        const mxArray *pVal1 = ssGetSFcnParam(S, 1);
+        if (!IS_PARAM_UINT8(pVal1)) {
+            invalidParam = true;
+            paramIndex = 1;
+            goto EXIT_POINT;
+        }
+    }
+
 
     EXIT_POINT:
     if (invalidParam) {
@@ -143,8 +162,11 @@ static void mdlCheckParameters(SimStruct *S)
  */
 static void mdlInitializeSizes(SimStruct *S)
 {
-
-    DECL_AND_INIT_DIMSINFO(outputDimsInfo);
+	uint8_T *dataTypeParamValue;
+	const mxArray *dataTypeParam;	
+    DTypeId dataTypeIdReg;
+    
+	DECL_AND_INIT_DIMSINFO(outputDimsInfo);
     ssSetNumSFcnParams(S, NPARAMS); /* Number of expected parameters */
     #if defined(MATLAB_MEX_FILE)
     if (ssGetNumSFcnParams(S) == ssGetSFcnParamsCount(S)) {
@@ -170,12 +192,46 @@ static void mdlInitializeSizes(SimStruct *S)
     ssSetOutputPortWidth(S, 0, OUTPUT_0_WIDTH);
     ssSetOutputPortDataType(S, 0, SS_UINT8);
     ssSetOutputPortComplexSignal(S, 0, OUTPUT_0_COMPLEX);
+	
     /* Output Port 1 */
-    ssSetOutputPortWidth(S, 1, OUTPUT_1_WIDTH);
-    ssSetOutputPortDataType(S, 1, SS_UINT8);
-    ssSetOutputPortComplexSignal(S, 1, OUTPUT_1_COMPLEX);
-    ssSetNumPWork(S, 0);
+  
+	dataTypeParam = ssGetSFcnParam(S, 1);
+	dataTypeParamValue = (uint8_T *) mxGetData(dataTypeParam);
+	
+	if (*dataTypeParamValue == 0)
+	{
+		/* UINT8 x 8 */
+		ssSetOutputPortWidth(S, 1, OUTPUT_1_WIDTH_UINT8);
+		ssSetOutputPortDataType(S, 1, SS_UINT8);
 
+	}
+	else if (*dataTypeParamValue == 1)
+	{
+		/* CAN_MESSAGE */
+		 dataTypeIdReg = ssGetDataTypeId(S, "CAN_MESSAGE");
+		 /*
+		 Alternatively:
+		 SL_CAN_STANDARD_FRAME_DTYPE_NAME
+		 SL_CAN_EXTENDED_FRAME_DTYPE_NAME
+		 No need to register: ssRegisterTypeFromNamedObject(S, "CAN_MESSAGE_BUS", &dataTypeIdReg);
+		 
+		 */
+		 if (dataTypeIdReg == INVALID_DTYPE_ID) 
+		 {
+			 ssSetErrorStatus(S, "Invalid identification for CAN_MESSAGE data type!");
+		 }
+		 ssSetOutputPortWidth(S, 1, OUTPUT_1_WIDTH_CANM);
+		 ssSetOutputPortDataType(S, 1, dataTypeIdReg);
+	}
+
+	else
+	{
+		ssSetErrorStatus(S, "Unknown type for the data inport!");
+	}
+ 
+    ssSetOutputPortComplexSignal(S, 1, OUTPUT_1_COMPLEX);
+	ssSetNumPWork(S, 0);
+	
     ssSetNumSampleTimes(S, 1);
     ssSetNumRWork(S, 0);
     ssSetNumIWork(S, 0);
@@ -218,7 +274,7 @@ static void mdlSetDefaultPortDataTypes(SimStruct *S)
 static void mdlSetWorkWidths(SimStruct *S)
 {
 
-    const char_T *rtParamNames[] = {"P1"};
+    const char_T *rtParamNames[] = {"P1","P2"};
     ssRegAllTunableParamsAsRunTimeParams(S, rtParamNames);
 
 }
@@ -246,9 +302,11 @@ static void mdlOutputs(SimStruct *S, int_T tid)
     uint8_T *isreceived = (uint8_T *) ssGetOutputPortRealSignal(S, 0);
     uint8_T *data = (uint8_T *) ssGetOutputPortRealSignal(S, 1);
     const int_T   p_width0  = mxGetNumberOfElements(PARAM_DEF0(S));
+    const int_T   p_width1  = mxGetNumberOfElements(PARAM_DEF1(S));
     const uint16_T *CAN_Id = (const uint16_T *) mxGetData(PARAM_DEF0(S));
+    const uint8_T *InputDataType = (const uint8_T *) mxGetData(PARAM_DEF1(S));
     
-    arduino_CAN_rx_msg_Outputs_wrapper(isreceived, data, CAN_Id, p_width0);
+    arduino_CAN_rx_msg_Outputs_wrapper(isreceived, data, CAN_Id, p_width0, InputDataType, p_width1);
 }
 
 /* Function: mdlTerminate =====================================================

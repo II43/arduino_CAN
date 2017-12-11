@@ -17,8 +17,9 @@
   
   %% Common Includes (H)
   %%<LibAddToCommonIncludes("RxCANmsg.h")> 
+  %<LibAddToCommonIncludes("can_message_2_tCAN.h")>
 
-  %% Defines (PRIVATE H)
+  %% Defines (PRIVATE H)  
   %openfile buffer 
   #define LED3              8
   %closefile buffer
@@ -188,6 +189,9 @@ void retreive_RxCAN()
   %assign pu0_width = LibBlockOutputSignalWidth(0)
   %assign pu1_width = LibBlockOutputSignalWidth(1)
   
+  %% Get data type of the data input signal
+  %assign pu1_dtname = LibBlockInputSignalDataTypeName(1,"")
+  
   %if !EXISTS(glRxMSG_Outputs) 
     %% Get the number of this type and count
     %foreach idxType = NumSFunctionNameCounts
@@ -208,13 +212,20 @@ void retreive_RxCAN()
   %endif  
   %% Get message  
   /* Get the CAN message */
+  %if pu1_dtname == "uint8_T"
   %foreach idx = pu1_width
-    %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>)
+     %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>)
      %<pu1sig> = RMsg_%<block.Identifier>.data[%<idx>];
   %endforeach
   %<pu0sig> =  isReceived_%<block.Identifier>;
   isReceived_%<block.Identifier> = 0;
-
+  %elseif pu1_dtname == "CAN_DATATYPE"
+    %assign pu1sig  = LibBlockOutputSignal(1, "", "", 0)
+    /* Prepare the output CAN message */
+    tCAN_2_can_message(&RMsg_%<block.Identifier>,%<pu1sig>);
+  %else
+  %error "Input 2 for data has unsupported datatype. Only UINT8 or CAN_MESSAGE structure are supported."
+  %endif	
   %%
 %endfunction
 

@@ -199,7 +199,7 @@ static void mdlInitializeSizes(SimStruct *S)
     ssSetInputPortDirectFeedThrough(S, 0, INPUT_0_FEEDTHROUGH);
     ssSetInputPortRequiredContiguous(S, 0, 1); /*direct input signal access*/
 	
-	   /* Input Port 1 */
+	/* Input Port 1 */
 	dataTypeParam = ssGetSFcnParam(S, 1);
 	dataTypeParamValue = (uint8_T *) mxGetData(dataTypeParam);
 	

@@ -3,9 +3,9 @@ MATLAB-Simulink code generation library for Arduino SparkFun CAN-BUS Shield. How
 
 ![arduino_CAN_library](arduino_CAN_library.png)
 
-The library had been saved in MATLAB R2014b but toolchain validation was performed only in R2017.
+All toolchain validation was performed in R2017 (that's also the version used for Simulink libraries and MEX-files are compilation).
 
-For simple demo application please refer to Simulink model in "examples/simple" folder.
+For simple demo application please refer to Simulink models in "examples/simple" or "examples/packandunpack" folders.
 
 Pre-requisities:
   1. MATLAB, Simulink and Simulink Coder
