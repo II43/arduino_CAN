@@ -17,7 +17,7 @@
   
   %% Common Includes (H)
   %%<LibAddToCommonIncludes("RxCANmsg.h")> 
-  %<LibAddToCommonIncludes("can_message_2_tCAN.h")>
+  %%<LibAddToCommonIncludes("can_message_2_tCAN.h")>
 
   %% Defines (PRIVATE H)  
   %openfile buffer 
@@ -63,6 +63,10 @@
 %%
 %function BlockInstanceSetup(block, system) Output
   %assign pu1_width = LibBlockOutputSignalWidth(1)
+
+  %% Get data type of the data output signal
+  %assign pu1_dtname = LibBlockOutputSignalDataTypeName(1,"")
+  
   %% Global parameters - definition
   %openfile declarebuffer
   uint8_t isReceived_%<block.Identifier>;
@@ -73,7 +77,7 @@
   %% Initialization
   %openfile initbuffer
 
-  RMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter.Value)>;
+  RMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter[0].Value)>;
   RMsg_%<block.Identifier>.header.rtr = 0;
   RMsg_%<block.Identifier>.header.length = 8;
   %foreach idx = pu1_width
@@ -137,11 +141,15 @@ extern uint8_t isReceived_%<block.Identifier>;
 
 void retreive_RxCAN()
 {         
+  uint8_t isNotFinished;
+  uint8_t i;
+  tCAN tempCANmsg;    
+  
   /* Retreive CAN messages */
   if (mcp2515_check_message())
   {
-    uint8_t isNotFinished = 0;
-    tCAN tempCANmsg;
+    isNotFinished = 0;
+
 	/* Loop through CAN messages and assign it to the right place*/
     isNotFinished = mcp2515_get_message(&tempCANmsg);
 	while(isNotFinished)
@@ -152,14 +160,28 @@ void retreive_RxCAN()
   %openfile rxmsg_c_ = "RxCANmsg.c","a"
       if (tempCANmsg.id == RMsg_%<block.Identifier>.id)
       {
-  %foreach idx = pu1_width
-    %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>) 
+  %if pu1_dtname == "uint8_T"
+    %foreach idx = pu1_width
+        %%assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>) 
         RMsg_%<block.Identifier>.data[%<idx>] = tempCANmsg.data[%<idx>];
-  %endforeach
+    %endforeach
+        
+  %elseif pu1_dtname == "CAN_DATATYPE" || pu1_dtname == "CAN_MESSAGE"
+        for (i=0;i<RMsg_%<block.Identifier>.header.length;i++)
+        {
+            RMsg_%<block.Identifier>.data[i] = tempCANmsg.data[i];
+        }
+  %else
+  %error %<pu1_dtname>  
+  %error "Input 2 for data has unsupported datatype. Only UINT8 or CAN_MESSAGE structure are supported."
+  %endif
         isReceived_%<block.Identifier> = 1;
-        digitalWrite(LED3,1U); 
+        %%digitalWrite(LED3,1U); 
       }
-    
+      else
+      {
+        %%isReceived_%<block.Identifier> = 0;  
+      }
   %closefile rxmsg_c_ 
   %% Last
   %if glRxMSG_BlockInstanceSetup == nRX_BlockInstanceSetup
@@ -189,8 +211,8 @@ void retreive_RxCAN()
   %assign pu0_width = LibBlockOutputSignalWidth(0)
   %assign pu1_width = LibBlockOutputSignalWidth(1)
   
-  %% Get data type of the data input signal
-  %assign pu1_dtname = LibBlockInputSignalDataTypeName(1,"")
+  %% Get data type of the data output signal
+  %assign pu1_dtname = LibBlockOutputSignalDataTypeName(1,"")
   
   %if !EXISTS(glRxMSG_Outputs) 
     %% Get the number of this type and count
@@ -214,19 +236,32 @@ void retreive_RxCAN()
   /* Get the CAN message */
   %if pu1_dtname == "uint8_T"
   %foreach idx = pu1_width
-     %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>)
-     %<pu1sig> = RMsg_%<block.Identifier>.data[%<idx>];
+    %assign pu1sig  = LibBlockOutputSignal(1, "", "", %<idx>)
+    /* Prepare the output CAN message */
+    %<pu1sig> = RMsg_%<block.Identifier>.data[%<idx>];
   %endforeach
-  %<pu0sig> =  isReceived_%<block.Identifier>;
-  isReceived_%<block.Identifier> = 0;
+    %<pu0sig> =  isReceived_%<block.Identifier>;
+    isReceived_%<block.Identifier> = 0;
   %elseif pu1_dtname == "CAN_DATATYPE"
     %assign pu1sig  = LibBlockOutputSignal(1, "", "", 0)
     /* Prepare the output CAN message */
-    tCAN_2_can_message(&RMsg_%<block.Identifier>,%<pu1sig>);
+    tCAN_2_can_message(&RMsg_%<block.Identifier>,&%<pu1sig>);
+    
+    %if !EXISTS(glRxMSG_Dtdef) 
+        %openfile defbuffer
+        #define CAN_RX_MSG_CAN_DATATYPE_USED
+        %closefile defbuffer
+        %assign ::glRxMSG_Dtdef = 1
+        %<LibCacheDefine(defbuffer)>
+    %endif
+
+    %<pu0sig> =  isReceived_%<block.Identifier>;
+    isReceived_%<block.Identifier> = 0;
   %else
   %error "Input 2 for data has unsupported datatype. Only UINT8 or CAN_MESSAGE structure are supported."
   %endif	
   %%
+
 %endfunction
 
 

@@ -3,7 +3,11 @@
 #ifndef CAN_MESSAGE_2_TCAN_H_
 #define CAN_MESSAGE_2_TCAN_H_
 
-void can_message_2_tCAN(CAN_MESSAGE *in, tCAN *out);
-void tCAN_2_can_message(tCAN *in, CAN_MESSAGE *out);
+#include <string.h>
+#include "can_message.h"
+#include "mcp2515.h"
+
+void can_message_2_tCAN(CAN_DATATYPE *in, tCAN *out);
+void tCAN_2_can_message(tCAN *in, CAN_DATATYPE *out);
 
 #endif

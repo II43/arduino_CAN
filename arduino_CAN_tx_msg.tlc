@@ -17,7 +17,7 @@
   
   %% Common Includes (H)
   %%<LibAddToCommonIncludes("mcp2515.h")>
-  %<LibAddToCommonIncludes("can_message_2_tCAN.h")>
+  %%<LibAddToCommonIncludes("can_message_2_tCAN.h")>
   
   %% Defines (PRIVATE H)
   %openfile buffer 
@@ -90,7 +90,7 @@
   {
       %% Prepare message
       /* Prepare the CAN message */
-      TMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter.Value)>;
+      TMsg_%<block.Identifier>.id = %<FEVAL("uint16",block.Parameter[0].Value)>;
       TMsg_%<block.Identifier>.header.rtr = 0;
       TMsg_%<block.Identifier>.header.length = 8;
       %foreach idx = pu1_width
@@ -108,11 +108,19 @@
   {
 	  %assign pu1sig  = LibBlockInputSignal(1, "", "", 0)
 	  /* Prepare the CAN message */
-	  can_message_2_tCAN(%<pu1sig>, &TMsg_%<block.Identifier>);
+	  can_message_2_tCAN(&%<pu1sig>, &TMsg_%<block.Identifier>);
 	  %% Send message
       /* Send the CAN message */
       mcp2515_send_message(&TMsg_%<block.Identifier>);
   }
+
+  %if !EXISTS(glTxMSG_Dtdef) 
+     %openfile defbuffer
+     #define CAN_TX_MSG_CAN_DATATYPE_USED
+     %closefile defbuffer
+     %assign ::glTxMSG_Dtdef = 1
+     %<LibCacheDefine(defbuffer)>
+  %endif  
   %else
   %error "Input 2 for data has unsupported datatype. Only UINT8 or CAN_MESSAGE structure are supported."
   %endif

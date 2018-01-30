@@ -17,9 +17,19 @@
   
   %% Common Includes (H)
   %<LibAddToCommonIncludes("mcp2515.h")> 
+
+  %openfile inclbuffer
   
+  #if defined(CAN_RX_MSG_CAN_DATATYPE_USED) || defined(CAN_TX_MSG_CAN_DATATYPE_USED)
+  #include "can_message_2_tCAN.h"
+  #endif  
+  
+  %closefile inclbuffer
+  %%<LibCacheIncludes(inclbuffer)>   
+  %<LibCacheTypedefs(inclbuffer)>   
+ 
   %% Additional Sources
-  %<LibAddToModelSources("mcp2515")>
+  %%<LibAddToModelSources("mcp2515")>
    
   %% Initialization
   %openfile initbuffer
